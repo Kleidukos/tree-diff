@@ -1,0 +1,41 @@
+name: Validation
+on: [push]
+jobs:
+  haskell-ci-linux-8_6_5:
+    name: Linux GHC-8.6.5
+    runs-on: ubuntu-18.04
+    container:
+      image: phadej/ghc:8.6.5-xenial
+    steps:
+      # https://help.github.com/en/actions/automating-your-workflow-with-github-actions/development-tools-for-github-actions#add-a-system-path-add-path
+      - name: Set PATH
+        run: |
+          echo "::add-path::$HOME/.cabal/bin"
+      - name: Install cabal-plan
+        run: |
+          mkdir -p $HOME/.cabal/bin
+          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
+          echo "de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz" | sha256sum -c -
+          xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
+          rm -f cabal-plan.xz
+          chmod a+x $HOME/.cabal/bin/cabal-plan
+      - name: Tool versions
+        run: |
+          ghc --version
+          cabal --version
+          cabal-plan --version
+      - name: Cabal config
+        run: |
+          mkdir -p /cabal/store
+          cabal user-config init -a "store-dir: /cabal/store" -f -v3
+      - name: Update Hackage index
+        run: cabal v2-update
+      - uses: actions/checkout@v1
+      - name: Build Plan
+        run: |
+          cabal v2-build --dry
+          cabal-plan
+
+      - name: Build
+        run: cabal v2-build
+
